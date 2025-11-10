@@ -52,14 +52,131 @@ Client → MapReduceService → UserBehaviorService → RecommendationService �
 
 ---
 
+## 🧭 Running Locally (Without Docker)
+
+You can also run all services manually using Python, simulating the distributed setup.
+
+### **Step 1: Install Dependencies**
+
+Ensure you have Python 3.8+ installed. Then run:
+
+```bash
+pip install -r requirements.txt
+```
+
+This installs required packages such as `grpcio`, `protobuf`, and `grpcio-tools`.
+
+### **Step 2: Generate gRPC Code from .proto File**
+
+If not already generated, create the Python gRPC bindings using:
+
+```bash
+python generate_proto.py
+```
+
+This script compiles `music_service.proto` into `music_service_pb2.py` and `music_service_pb2_grpc.py` under `grpc/generated/`.
+
+### **Step 3: Start All gRPC Services**
+
+Each service must be started in a **separate terminal** to simulate a distributed microservices environment.
+
+#### 🧮 Terminal 1 — MapReduce Service
+```bash
+python grpc/server/mapreduce_server.py
+```
+Expected Output:
+```
+[MapReduce] gRPC server started on port 50051
+```
+
+#### 👥 Terminal 2 — UserBehavior Service
+```bash
+python grpc/server/userbehavior_server.py
+```
+Expected Output:
+```
+[UserBehavior] gRPC server started on port 50053
+```
+
+#### 🎧 Terminal 3 — Recommendation Service
+```bash
+python grpc/server/recommendation_server.py
+```
+Expected Output:
+```
+[Recommendation] gRPC server started on port 50055
+```
+
+### **Step 4: Run the Client**
+
+Once all services are running, open a **new terminal** and execute:
+
+```bash
+python grpc/client/main_client.py
+```
+
+This client will:
+- Load streaming data from `data/stream_data.csv`
+- Send it sequentially to all 3 services
+- Print detailed analytics to the terminal
+- Save the results to `results/run_grpc_metrics.json`
+
+### **Step 5: View Results**
+
+After completion, open:
+```
+results/run_grpc_metrics.json
+```
+This file contains complete performance timings and analysis output for all services.
+
+---
+
+## 📊 Output Metrics
+
+Each service writes runtime metrics to `/tmp/` (inside container) and the client aggregates them into a final summary JSON.
+
+### Example Service Metrics:
+
+```json
+{
+  "processing_time": 0.342,
+  "count_keys": 142,
+  "num_users": 55,
+  "num_trending": 5
+}
+```
+
+### Final Aggregated Output (`results/run_grpc_metrics.json`):
+
+```json
+{
+  "workflow": "Client → MapReduce → UserBehavior → Recommendation → Client",
+  "performance": {
+    "mapreduce_time": 0.34,
+    "userbehavior_time": 0.28,
+    "recommendation_time": 0.19,
+    "total_workflow_time": 0.81
+  },
+  "mapreduce_results": {
+    "top_songs": {"Artist1 - SongA": 53, "Artist2 - SongB": 41}
+  },
+  "userbehavior_results": {
+    "top_users": ["U1", "U2", "U3"]
+  },
+  "recommendation_results": {
+    "trending_songs": ["Artist2 - SongB", "Artist3 - SongC"]
+  }
+}
+```
+
 ## 🐳 Docker Setup
 
-Each service has its own Dockerfile, defined in the `docker/` folder, and the setup is orchestrated via `docker-compose.yml`.
+Each service has its own Dockerfile, defined in the `docker/` folder, and the setup is orchestrated via `docker-compose.grpc.yml`.
 
 ### **Run the system with Docker Compose:**
 
 ```bash
-docker-compose -f docker/docker-compose.yml up --build
+docker-compose -f docker/docker-compose.grpc.yml up --build
 ```
 
 This command starts the following containers:
@@ -74,7 +191,8 @@ All containers are connected on the shared `grpc-network` bridge.
 Once the services are running, execute:
 
 ```bash
-python grpc/client/main_client.py
+cd grpc/client
+python client.py
 ```
 
 ---
@@ -89,7 +207,7 @@ cst352-main/
 │   ├── Dockerfile.grpc.mapreduce
 │   ├── Dockerfile.grpc.userbehavior
 │   ├── Dockerfile.grpc.recommendation
-│   └── docker-compose.yml
+│   └── docker-compose.grpc.yml
 ├── grpc/
 │   ├── client/
 │   │   └── main_client.py
@@ -194,5 +312,4 @@ This project is for **academic and demonstration purposes** under the CST352 cou
 ## 🧑‍💻 Authors
 
 - Original repository: [`nandanjunior/cst352`](https://github.com/nandanjunior/cst352)
-- Documentation and README analysis by **Convex (ChatGPT)**
 
